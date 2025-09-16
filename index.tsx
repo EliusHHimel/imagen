@@ -10,6 +10,9 @@ import JSZip from 'jszip';
 // Correct API key usage as per guidelines
 const ai = new GoogleGenAI({apiKey: process.env.API_KEY});
 
+// -------------------- STATE ----------------------------------------------------------------
+let totalGeneratedCount = 0;
+
 // -------------------- DOM ELEMENTS ---------------------------------------------------------
 const imageGallery = document.getElementById('image-gallery') as HTMLDivElement;
 const generateButton = document.getElementById('generate-button') as HTMLButtonElement;
@@ -24,6 +27,12 @@ const errorMessage = document.getElementById('error-message') as HTMLParagraphEl
 const closeErrorButton = document.getElementById('close-error-button') as HTMLButtonElement;
 const downloadContainer = document.getElementById('download-container') as HTMLDivElement;
 const downloadAllButton = document.getElementById('download-all-button') as HTMLButtonElement;
+const galleryCountSpan = document.getElementById('gallery-count') as HTMLSpanElement;
+const totalGeneratedCountSpan = document.getElementById('total-generated-count') as HTMLSpanElement;
+const progressContainer = document.getElementById('progress-container') as HTMLDivElement;
+const progressBar = document.getElementById('progress-bar') as HTMLDivElement;
+const progressLabel = document.getElementById('progress-label') as HTMLSpanElement;
+
 
 // -------------------- ERROR HANDLING -------------------------------------------------------
 function displayError(message: string) {
@@ -58,7 +67,33 @@ async function generateCaption(base64ImageData: string, imagePrompt: string): Pr
 }
 
 // -------------------- UI & IMAGE RENDERING -------------------------------------------------
-// Fix: Pass the imagePrompt as an argument since GeneratedImage doesn't contain it.
+
+function updateUiCounts(galleryCount: number) {
+    galleryCountSpan.textContent = galleryCount.toString();
+    totalGeneratedCountSpan.textContent = totalGeneratedCount.toString();
+}
+
+function updateProgress(current: number, total: number) {
+    const percentage = total > 0 ? (current / total) * 100 : 0;
+    progressContainer.classList.remove('hidden');
+    progressBar.classList.remove('indeterminate');
+    progressBar.style.width = `${percentage}%`;
+    progressLabel.textContent = `Generating image ${current} of ${total}...`;
+}
+
+function showIndeterminateProgress(message: string) {
+    progressContainer.classList.remove('hidden');
+    progressBar.classList.add('indeterminate');
+    progressBar.style.width = '100%';
+    progressLabel.textContent = message;
+}
+
+function hideProgress() {
+    progressContainer.classList.add('hidden');
+    progressBar.classList.remove('indeterminate');
+    progressBar.style.width = '0%';
+}
+
 function populateImageContainer(imageData: GeneratedImage, container: HTMLDivElement, imagePrompt: string) {
     const imageWrapper = document.createElement('div');
     imageWrapper.className = 'image-wrapper';
@@ -66,12 +101,19 @@ function populateImageContainer(imageData: GeneratedImage, container: HTMLDivEle
     const img = document.createElement('img');
     const base64Image = imageData.image.imageBytes;
     img.src = `data:image/png;base64,${base64Image}`;
-    // Fix: Use the passed imagePrompt for the alt text, as imageData.prompt does not exist.
     img.alt = imagePrompt;
 
     const downloadButton = document.createElement('button');
-    downloadButton.textContent = 'Download';
     downloadButton.className = 'download-button';
+    downloadButton.setAttribute('aria-label', 'Download image');
+    downloadButton.setAttribute('title', 'Download image');
+    // SVG icon for download
+    downloadButton.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>`;
     downloadButton.onclick = () => {
         const a = document.createElement('a');
         a.href = img.src;
@@ -89,7 +131,6 @@ function populateImageContainer(imageData: GeneratedImage, container: HTMLDivEle
     
     img.onload = async () => {
         try {
-            // Fix: Use the passed imagePrompt for caption generation, as imageData.prompt does not exist.
             const captionText = await generateCaption(base64Image, imagePrompt);
             caption.textContent = captionText;
         } catch (e) {
@@ -150,6 +191,7 @@ async function generateImages() {
     imageGallery.innerHTML = '';
     downloadContainer.classList.add('hidden');
     hideError();
+    updateUiCounts(0);
 
     const numberOfImages = parseInt(numImagesInput.value, 10);
 
@@ -165,26 +207,36 @@ async function generateImages() {
             PersonGeneration.ALLOW_ADULT : PersonGeneration.DONT_ALLOW;
         
         let allGeneratedImages: GeneratedImage[] = [];
-        // Fix: Store prompts to pass them to populateImageContainer, as GeneratedImage doesn't contain the prompt.
         let promptsForImages: string[] = [];
 
         if (diverseSubjectsCheckbox.checked) {
+            showIndeterminateProgress('Generating diverse prompts...');
             const diversePrompts = await getDiversePrompts(promptInput.value, numberOfImages);
             promptsForImages = diversePrompts;
-            const imagePromises = diversePrompts.map(prompt => 
-                ai.models.generateImages({
+            
+            for (let i = 0; i < diversePrompts.length; i++) {
+                const currentPrompt = diversePrompts[i];
+                updateProgress(i + 1, diversePrompts.length);
+                const response = await ai.models.generateImages({
                     model: 'imagen-4.0-generate-001',
-                    prompt: prompt,
+                    prompt: currentPrompt,
                     config: {
                         numberOfImages: 1,
                         outputMimeType: 'image/png',
                         personGeneration: personGenerationSetting,
                     },
-                })
-            );
-            const responses = await Promise.all(imagePromises);
-            responses.forEach(response => allGeneratedImages.push(...response.generatedImages));
+                });
+                if (response.generatedImages.length > 0) {
+                    const imageData = response.generatedImages[0];
+                    allGeneratedImages.push(imageData);
+                    if (placeholders[i]) {
+                         populateImageContainer(imageData, placeholders[i] as HTMLDivElement, currentPrompt);
+                    }
+                }
+            }
+
         } else {
+            showIndeterminateProgress(`Generating ${numberOfImages} images...`);
             const response = await ai.models.generateImages({
                 model: 'imagen-4.0-generate-001',
                 prompt: promptInput.value,
@@ -196,15 +248,20 @@ async function generateImages() {
             });
             allGeneratedImages = response.generatedImages;
             promptsForImages = Array(allGeneratedImages.length).fill(promptInput.value);
+
+            if (allGeneratedImages.length > 0) {
+                allGeneratedImages.forEach((imageData, index) => {
+                    if (placeholders[index]) {
+                        populateImageContainer(imageData, placeholders[index] as HTMLDivElement, promptsForImages[index]);
+                    }
+                });
+            }
         }
+        
+        totalGeneratedCount += allGeneratedImages.length;
+        updateUiCounts(allGeneratedImages.length);
 
         if (allGeneratedImages.length > 0) {
-            allGeneratedImages.forEach((imageData, index) => {
-                if (placeholders[index]) {
-                    // Fix: Pass the corresponding prompt to populateImageContainer.
-                    populateImageContainer(imageData, placeholders[index] as HTMLDivElement, promptsForImages[index]);
-                }
-            });
             downloadContainer.classList.remove('hidden');
         } else {
             imageGallery.innerHTML = '<p class="placeholder">Image generation failed to produce results. Please try a different prompt.</p>';
@@ -218,53 +275,84 @@ async function generateImages() {
     } finally {
         generateButton.textContent = originalButtonText;
         generateButton.disabled = false;
+        hideProgress();
     }
 }
 
 
 async function suggestPrompts() {
     suggestPromptsButton.disabled = true;
-    suggestionsContainer.innerHTML = '';
+    suggestionsContainer.innerHTML = '<p class="loading-suggestions">Getting suggestions... ✨</p>';
     hideError();
 
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: 'Suggest 4 creative, visually-rich, and diverse prompts for an AI image generator. The prompts should be about different subjects and styles.',
+            contents: 'Suggest 2 creative, visually-rich prompts for an AI image generator for each of the following categories: Fantasy, Sci-Fi, Nature, and Abstract.',
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,
                     properties: {
-                        prompts: {
+                        "Fantasy": {
                             type: Type.ARRAY,
-                            items: {
-                                type: Type.STRING,
-                                description: 'A creative prompt for an AI image generator.'
-                            }
+                            items: { type: Type.STRING, description: 'A creative fantasy-themed prompt.' }
+                        },
+                        "Sci-Fi": {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING, description: 'A creative sci-fi-themed prompt.' }
+                        },
+                        "Nature": {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING, description: 'A creative nature-themed prompt.' }
+                        },
+                        "Abstract": {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING, description: 'A creative abstract-themed prompt.' }
                         }
                     },
-                    required: ['prompts'],
+                    required: ['Fantasy', 'Sci-Fi', 'Nature', 'Abstract'],
                 }
             }
         });
 
+        suggestionsContainer.innerHTML = ''; // Clear loading message
         const result = JSON.parse(response.text);
-        if (result.prompts && Array.isArray(result.prompts)) {
-            result.prompts.forEach((prompt: string) => {
-                const button = document.createElement('button');
-                button.textContent = prompt;
-                button.className = 'suggestion-button';
-                button.onclick = () => {
-                    promptInput.value = prompt;
-                };
-                suggestionsContainer.appendChild(button);
-            });
+
+        for (const category in result) {
+            const categoryTitle = document.createElement('h3');
+            categoryTitle.textContent = category;
+            suggestionsContainer.appendChild(categoryTitle);
+
+            const categoryPrompts = result[category];
+            if (Array.isArray(categoryPrompts)) {
+                const buttonWrapper = document.createElement('div');
+                buttonWrapper.className = 'suggestion-category-wrapper';
+                
+                categoryPrompts.forEach((prompt: string) => {
+                    const button = document.createElement('button');
+                    button.textContent = prompt;
+                    button.className = 'suggestion-button';
+                    button.onclick = () => {
+                        promptInput.value = prompt;
+                    };
+                    buttonWrapper.appendChild(button);
+                });
+                suggestionsContainer.appendChild(buttonWrapper);
+            }
         }
+        
+        const moreButton = document.createElement('button');
+        moreButton.id = 'more-suggestions-button';
+        moreButton.textContent = 'More Suggestions';
+        moreButton.onclick = suggestPrompts;
+        suggestionsContainer.appendChild(moreButton);
+
     } catch (e) {
         const error = e as Error;
         console.error(e);
         displayError(error.message || 'Could not suggest prompts.');
+        suggestionsContainer.innerHTML = ''; // Clear loading on error
     } finally {
         suggestPromptsButton.disabled = false;
     }
@@ -319,3 +407,4 @@ if (downloadAllButton) downloadAllButton.addEventListener('click', downloadAllIm
 if (!imageGallery.innerHTML) {
     imageGallery.innerHTML = '<p class="placeholder">Your generated images will appear here. ✨</p>';
 }
+updateUiCounts(0); // Initialize counts on load
