@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Imagen & Gemini UI Demo</title>
+    <link rel="stylesheet" href="index.css">
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/genai": "https://esm.sh/@google/genai@1.0.0",
+          "jszip": "https://esm.sh/jszip@3.10.1"
+        }
+      }
+    </script>
+</head>
+<body>
+    <div id="error-container" class="hidden">
+        <p id="error-message"></p>
+        <button id="close-error-button" aria-label="Close error message">&times;</button>
+    </div>
+    <header>
+        <h1>Imagen &amp; Gemini</h1>
+        <p>Your creative partner for generating stunning visuals and descriptive captions.</p>
+    </header>
+    <div id="controls">
+        <label for="prompt-input">Enter your prompt:</label>
+        <textarea id="prompt-input" rows="4" placeholder="e.g., A sleek black panther standing regally on a reflective salt flat at dusk..."></textarea>
+        
+        <div class="button-group">
+            <button id="save-prompt-button">Save Prompt</button>
+            <button id="suggest-prompts-button">✨ Suggest Prompts</button>
+        </div>
+        
+        <div id="suggestions-container"></div>
+        
+        <hr class="divider">
+        
+        <div class="generation-controls">
+            <div class="generation-options">
+                <label for="number-of-images">Number of images:</label>
+                <input type="number" id="number-of-images" name="number-of-images" min="1" max="4" value="3" aria-label="Number of images to generate">
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" id="allow-people" name="allow-people" checked>
+                    <label for="allow-people">Allow generating people</label>
+                </div>
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" id="diverse-subjects" name="diverse-subjects">
+                    <label for="diverse-subjects">Generate diverse subjects</label>
+                </div>
+            </div>
+            <button id="generate-button">Generate</button>
+        </div>
+    </div>
+    <div id="download-container" class="hidden">
+        <button id="download-all-button">Download All as ZIP</button>
+    </div>
+    <div id="image-gallery"></div>
+    <script type="module" src="index.tsx"></script>
+</body>
+</html>
