@@ -15,7 +15,6 @@ const imageGallery = document.getElementById('image-gallery') as HTMLDivElement;
 const generateButton = document.getElementById('generate-button') as HTMLButtonElement;
 const numImagesInput = document.getElementById('number-of-images') as HTMLInputElement;
 const promptInput = document.getElementById('prompt-input') as HTMLTextAreaElement;
-const savePromptButton = document.getElementById('save-prompt-button') as HTMLButtonElement;
 const suggestPromptsButton = document.getElementById('suggest-prompts-button') as HTMLButtonElement;
 const suggestionsContainer = document.getElementById('suggestions-container') as HTMLDivElement;
 const allowPeopleCheckbox = document.getElementById('allow-people') as HTMLInputElement;
@@ -25,27 +24,6 @@ const errorMessage = document.getElementById('error-message') as HTMLParagraphEl
 const closeErrorButton = document.getElementById('close-error-button') as HTMLButtonElement;
 const downloadContainer = document.getElementById('download-container') as HTMLDivElement;
 const downloadAllButton = document.getElementById('download-all-button') as HTMLButtonElement;
-
-// -------------------- LOCAL STORAGE ------------------------------------------------------
-const SAVED_PROMPT_KEY = 'savedImagenPrompt';
-
-function loadPrompt() {
-    const savedPrompt = localStorage.getItem(SAVED_PROMPT_KEY);
-    if (savedPrompt && promptInput) {
-        promptInput.value = savedPrompt;
-    }
-}
-
-function savePrompt() {
-    if (promptInput) {
-        localStorage.setItem(SAVED_PROMPT_KEY, promptInput.value);
-        const originalText = savePromptButton.textContent;
-        savePromptButton.textContent = 'Saved!';
-        setTimeout(() => {
-            savePromptButton.textContent = originalText;
-        }, 2000);
-    }
-}
 
 // -------------------- ERROR HANDLING -------------------------------------------------------
 function displayError(message: string) {
@@ -245,8 +223,6 @@ async function generateImages() {
 
 
 async function suggestPrompts() {
-    const originalButtonText = suggestPromptsButton.textContent;
-    suggestPromptsButton.textContent = 'Thinking...';
     suggestPromptsButton.disabled = true;
     suggestionsContainer.innerHTML = '';
     hideError();
@@ -290,7 +266,6 @@ async function suggestPrompts() {
         console.error(e);
         displayError(error.message || 'Could not suggest prompts.');
     } finally {
-        suggestPromptsButton.textContent = originalButtonText;
         suggestPromptsButton.disabled = false;
     }
 }
@@ -336,14 +311,11 @@ async function downloadAllImages() {
 
 // -------------------- EVENT LISTENERS ----------------------------------------------------
 if (generateButton) generateButton.addEventListener('click', generateImages);
-if (savePromptButton) savePromptButton.addEventListener('click', savePrompt);
 if (suggestPromptsButton) suggestPromptsButton.addEventListener('click', suggestPrompts);
 if (closeErrorButton) closeErrorButton.addEventListener('click', hideError);
 if (downloadAllButton) downloadAllButton.addEventListener('click', downloadAllImages);
 
 // -------------------- INITIALIZATION -----------------------------------------------------
-loadPrompt();
-
 if (!imageGallery.innerHTML) {
     imageGallery.innerHTML = '<p class="placeholder">Your generated images will appear here. ✨</p>';
 }

@@ -53,9 +53,13 @@ header p {
   font-size: 1.1rem;
 }
 
+.prompt-wrapper {
+    position: relative;
+}
+
 #prompt-input {
     width: 100%;
-    padding: 12px;
+    padding: 12px 50px 12px 12px;
     border: 1px solid #444;
     border-radius: 8px;
     background-color: #2a2a2a;
@@ -71,13 +75,6 @@ header p {
     outline: none;
     border-color: #007bff;
     box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-}
-
-.button-group {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
 }
 
 .generation-controls {
@@ -114,7 +111,6 @@ header p {
     transform: translateY(0);
 }
 
-
 #generate-button {
   background-color: #007bff; /* Primary blue */
 }
@@ -122,19 +118,39 @@ header p {
   background-color: #0069d9;
 }
 
-#save-prompt-button {
-    background-color: #28a745; /* Success green */
-}
-#save-prompt-button:hover {
-    background-color: #218838;
+#suggest-prompts-button {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    background: transparent;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: #aaa;
 }
 
-#suggest-prompts-button {
-    background-color: #6c757d; /* Secondary gray */
-}
 #suggest-prompts-button:hover {
-    background-color: #5a6268;
+    background-color: #333;
+    color: #fff;
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: none;
 }
+
+#suggest-prompts-button:disabled {
+    color: #555;
+    cursor: not-allowed;
+    background-color: transparent;
+    transform: translateY(-50%);
+}
+
+#suggest-prompts-button svg {
+    width: 20px;
+    height: 20px;
+}
+
 
 #controls button:disabled {
     background-color: #333;
@@ -179,7 +195,6 @@ header p {
     height: 16px;
 }
 
-
 .divider {
     border: 0;
     height: 1px;
@@ -191,6 +206,7 @@ header p {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    margin-top: -5px; /* Pull suggestions closer to the prompt box */
 }
 
 @keyframes fadeIn {
@@ -205,20 +221,23 @@ header p {
 }
 
 .suggestion-button {
-    padding: 6px 12px;
-    background-color: transparent;
+    padding: 8px 16px;
+    background-color: #2a2a2a;
     color: #00aaff;
-    border: 1px solid #00aaff;
-    border-radius: 16px;
+    border: 1px solid #444;
+    border-radius: 20px;
     cursor: pointer;
     font-size: 0.9rem;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    font-weight: 500;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, transform 0.2s ease;
     animation: fadeIn 0.5s ease forwards;
 }
 
 .suggestion-button:hover {
     background-color: #00aaff;
-    color: #121212;
+    color: #fff;
+    border-color: #00aaff;
+    transform: translateY(-2px);
 }
 
 #download-container {

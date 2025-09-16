@@ -25,13 +25,15 @@
     </header>
     <div id="controls">
         <label for="prompt-input">Enter your prompt:</label>
-        <textarea id="prompt-input" rows="4" placeholder="e.g., A sleek black panther standing regally on a reflective salt flat at dusk..."></textarea>
-        
-        <div class="button-group">
-            <button id="save-prompt-button">Save Prompt</button>
-            <button id="suggest-prompts-button">✨ Suggest Prompts</button>
+        <div class="prompt-wrapper">
+            <textarea id="prompt-input" rows="4" placeholder="e.g., A sleek black panther standing regally on a reflective salt flat at dusk..."></textarea>
+            <button id="suggest-prompts-button" aria-label="Suggest Prompts" title="Suggest Prompts">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2.25a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0v-3a.75.75 0 0 1 .75-.75Zm0 15a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0v-3a.75.75 0 0 1 .75-.75Zm7.06-12.22a.75.75 0 0 1 .53 1.28l-2.12 2.12a.75.75 0 0 1-1.06-1.06l2.12-2.12a.75.75 0 0 1 .53-.22Zm-11.96 9.84a.75.75 0 0 1 .53 1.28l-2.12 2.12a.75.75 0 1 1-1.06-1.06l2.12-2.12a.75.75 0 0 1 .53-.22ZM4.94 4.94a.75.75 0 0 1 1.06 0l2.12 2.12a.75.75 0 0 1-1.06 1.06L4.94 6a.75.75 0 0 1 0-1.06Zm9.84 11.96a.75.75 0 0 1 1.06 0l2.12 2.12a.75.75 0 1 1-1.06 1.06l-2.12-2.12a.75.75 0 0 1 0-1.06ZM2.25 12a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1-.75-.75Zm15 0a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1-.75-.75Z"/>
+                </svg>
+            </button>
         </div>
-        
+
         <div id="suggestions-container"></div>
         
         <hr class="divider">
