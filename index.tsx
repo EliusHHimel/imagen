@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import {GoogleGenAI, GeneratedImage, PersonGeneration, Type} from '@google/genai';
+import {GoogleGenAI, GeneratedImage, Modality, Type} from '@google/genai';
 import JSZip from 'jszip';
 
 // Correct API key usage as per guidelines
@@ -20,7 +20,6 @@ const numImagesInput = document.getElementById('number-of-images') as HTMLInputE
 const promptInput = document.getElementById('prompt-input') as HTMLTextAreaElement;
 const suggestPromptsButton = document.getElementById('suggest-prompts-button') as HTMLButtonElement;
 const suggestionsContainer = document.getElementById('suggestions-container') as HTMLDivElement;
-const allowPeopleCheckbox = document.getElementById('allow-people') as HTMLInputElement;
 const diverseSubjectsCheckbox = document.getElementById('diverse-subjects') as HTMLInputElement;
 const errorContainer = document.getElementById('error-container') as HTMLDivElement;
 const errorMessage = document.getElementById('error-message') as HTMLParagraphElement;
@@ -203,9 +202,6 @@ async function generateImages() {
     const placeholders = Array.from(imageGallery.querySelectorAll('.image-container.loading'));
 
     try {
-        const personGenerationSetting = allowPeopleCheckbox.checked ?
-            PersonGeneration.ALLOW_ADULT : PersonGeneration.DONT_ALLOW;
-        
         let allGeneratedImages: GeneratedImage[] = [];
         let promptsForImages: string[] = [];
 
@@ -217,44 +213,54 @@ async function generateImages() {
             for (let i = 0; i < diversePrompts.length; i++) {
                 const currentPrompt = diversePrompts[i];
                 updateProgress(i + 1, diversePrompts.length);
-                const response = await ai.models.generateImages({
-                    model: 'imagen-4.0-generate-001',
-                    prompt: currentPrompt,
+                const response = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash-image-preview',
+                    contents: { parts: [{ text: currentPrompt }] },
                     config: {
-                        numberOfImages: 1,
-                        outputMimeType: 'image/png',
-                        personGeneration: personGenerationSetting,
+                        responseModalities: [Modality.IMAGE, Modality.TEXT],
                     },
                 });
-                if (response.generatedImages.length > 0) {
-                    const imageData = response.generatedImages[0];
+
+                const imagePart = response.candidates?.[0]?.content?.parts?.find(part => part.inlineData);
+                if (imagePart?.inlineData) {
+                    const imageData = { image: { imageBytes: imagePart.inlineData.data } };
                     allGeneratedImages.push(imageData);
                     if (placeholders[i]) {
                          populateImageContainer(imageData, placeholders[i] as HTMLDivElement, currentPrompt);
                     }
+                } else {
+                     if (placeholders[i]) {
+                        (placeholders[i] as HTMLDivElement).innerHTML = '<p class="image-caption">Failed to generate this image.</p>';
+                        (placeholders[i] as HTMLDivElement).classList.remove('loading');
+                    }
                 }
             }
-
         } else {
-            showIndeterminateProgress(`Generating ${numberOfImages} images...`);
-            const response = await ai.models.generateImages({
-                model: 'imagen-4.0-generate-001',
-                prompt: promptInput.value,
-                config: {
-                    numberOfImages: numberOfImages,
-                    outputMimeType: 'image/png',
-                    personGeneration: personGenerationSetting,
-                },
-            });
-            allGeneratedImages = response.generatedImages;
-            promptsForImages = Array(allGeneratedImages.length).fill(promptInput.value);
-
-            if (allGeneratedImages.length > 0) {
-                allGeneratedImages.forEach((imageData, index) => {
-                    if (placeholders[index]) {
-                        populateImageContainer(imageData, placeholders[index] as HTMLDivElement, promptsForImages[index]);
-                    }
+            promptsForImages = Array(numberOfImages).fill(promptInput.value);
+            for (let i = 0; i < numberOfImages; i++) {
+                updateProgress(i + 1, numberOfImages);
+                const currentPrompt = promptsForImages[i];
+                const response = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash-image-preview',
+                    contents: { parts: [{ text: currentPrompt }] },
+                    config: {
+                        responseModalities: [Modality.IMAGE, Modality.TEXT],
+                    },
                 });
+                
+                const imagePart = response.candidates?.[0]?.content?.parts?.find(part => part.inlineData);
+                if (imagePart?.inlineData) {
+                    const imageData = { image: { imageBytes: imagePart.inlineData.data } };
+                    allGeneratedImages.push(imageData);
+                    if (placeholders[i]) {
+                        populateImageContainer(imageData, placeholders[i] as HTMLDivElement, currentPrompt);
+                    }
+                } else {
+                     if (placeholders[i]) {
+                        (placeholders[i] as HTMLDivElement).innerHTML = '<p class="image-caption">Failed to generate this image.</p>';
+                        (placeholders[i] as HTMLDivElement).classList.remove('loading');
+                    }
+                }
             }
         }
         
@@ -270,7 +276,8 @@ async function generateImages() {
     } catch (e) {
         const error = e as Error;
         console.error(error);
-        displayError(error.message || 'Could not generate images.');
+        const errorMessageText = error.message || 'Could not generate images.';
+        displayError(errorMessageText);
         imageGallery.innerHTML = '<p class="placeholder">Image generation failed. Please check the console and try again.</p>';
     } finally {
         generateButton.textContent = originalButtonText;
